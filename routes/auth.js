@@ -2,6 +2,8 @@ const router = require("express").Router();
 const User = require("../models/User");
 const {registerValidation, loginValidation} = require("../utils/validation");
 const bcrypt = require("bcryptjs");
+const JWT = require("jsonwebtoken");
+const verifyToken = require("../utils/verifyToken");
 
 // Route register
 router.post("/register", async (req, res) => {
@@ -33,6 +35,7 @@ router.post("/register", async (req, res) => {
     }
 });
 
+
 // Route login
 router.post("/login", async (req, res) => {
     // validate the data
@@ -47,12 +50,27 @@ router.post("/login", async (req, res) => {
     const hashedPassword = bcrypt.compareSync(req.body.password, user.password);
     if (!hashedPassword) return res.status(400).send({message: "Email or Passord is wrong!"});
 
+    // Create and assign a token
+    const token = JWT.sign({userId: user._id}, process.env.JWT_SECRET);
+
     try{
-        res.status(200).send({userId: user._id});
+        res.header('x-auth-token', token).status(200).send({token: token});
     }
     catch(err){
         res.status(400).send({message:err});
     }
 });
+
+
+// Get all users
+router.get("/", verifyToken, async (req, res) => {
+    try {
+        const allUsers= await User.find();
+        res.status(200).send(allUsers);
+    } catch (error) {
+        res.status(500).send({ message: "Error while getting users" });
+    }
+});
+
 
 module.exports = router;
